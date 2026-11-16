@@ -75,6 +75,7 @@ function harness(opts = {}) {
     probeVersion: async () => '1.5.9',
     killTree: opts.killTree ?? defaultKill,
     idleTimeoutMs: opts.idleTimeoutMs,
+    killGraceMs: opts.killGraceMs,
   });
   return { bridge, sent, spawns, children, killed };
 }
@@ -308,4 +309,75 @@ test('reportFrameError emits ERROR BAD_REQUEST with reqId null', () => {
   const h = harness();
   h.bridge.reportFrameError(new Error('invalid JSON frame'));
   assert.deepEqual(h.sent, [{ type: 'error', reqId: null, code: 'BAD_REQUEST', message: 'invalid JSON frame' }]);
+});
+
+const rejectingKill = async () => { throw new Error('taskkill could not start'); };
+const exitsFor = (sent, reqId) => sent.filter((m) => m.type === 'exit' && m.reqId === reqId);
+
+test('failed kill on hung children ends each run after the grace with one EXIT and frees the slots', async () => {
+  const h = harness({ killTree: rejectingKill, killGraceMs: 20 });
+  let fallbacks = 0;
+  for (const id of ['h1', 'h2', 'h3']) {
+    await h.bridge.handle(runMsg(id));
+    h.children.at(-1).kill = () => { fallbacks += 1; return true; };
+    await h.bridge.handle({ type: 'cancel', reqId: id });
+  }
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  for (const id of ['h1', 'h2', 'h3']) {
+    assert.deepEqual(exitsFor(h.sent, id), [{ type: 'exit', reqId: id, code: null, signal: null, cancelled: true }]);
+  }
+  assert.equal(fallbacks, 3);
+  await h.bridge.handle(runMsg('h4'));
+  assert.equal(h.spawns.length, 4);
+  assert.equal(h.sent.some((m) => m.code === 'TOO_MANY_RUNS'), false);
+});
+
+test('failed kill followed by a late real exit still emits exactly one EXIT', async () => {
+  const h = harness({ killTree: rejectingKill, killGraceMs: 50 });
+  await h.bridge.handle(runMsg('b1'));
+  const [child] = h.children;
+  let fallbacks = 0;
+  child.kill = () => { fallbacks += 1; return true; };
+  await h.bridge.handle({ type: 'cancel', reqId: 'b1' });
+  await settle();
+  child.emit('exit', 1, null);
+  child.emit('close', 1, null);
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  assert.equal(fallbacks, 1);
+  assert.deepEqual(exitsFor(h.sent, 'b1'), [{ type: 'exit', reqId: 'b1', code: 1, signal: null, cancelled: true }]);
+});
+
+test('idle timeout with a failing kill ends the run with exactly one EXIT', async () => {
+  const h = harness({ idleTimeoutMs: 20, killGraceMs: 20, killTree: rejectingKill });
+  await h.bridge.handle(runMsg('i2'));
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  h.children[0].emit('close', 0, null); // a late real exit must not add a second EXIT
+  await settle();
+  assert.deepEqual(typesOf(h.sent), ['stderr', 'exit']);
+  assert.deepEqual(h.sent[1], { type: 'exit', reqId: 'i2', code: null, signal: null, cancelled: false });
+});
+
+test('a repeated cancel re-attempts the kill while the run is still alive', async () => {
+  let attempts = 0;
+  const h = harness({
+    killTree: async () => { attempts += 1; throw new Error('access denied'); },
+    killGraceMs: 5_000,
+  });
+  await h.bridge.handle(runMsg('d1'));
+  await h.bridge.handle({ type: 'cancel', reqId: 'd1' });
+  await h.bridge.handle({ type: 'cancel', reqId: 'd1' });
+  await settle();
+  assert.equal(attempts, 2);
+  assert.deepEqual(typesOf(h.sent), ['cancelled', 'cancelled']);
+  h.children[0].emit('close', 0, null); // clears the grace timer and ends the run
+  assert.deepEqual(typesOf(h.sent), ['cancelled', 'cancelled', 'exit']);
+});
+
+test('stdin-end shutdown awaits a hung failing kill only up to the grace', async () => {
+  const h = harness({ killTree: rejectingKill, killGraceMs: 30 });
+  await h.bridge.handle(runMsg('g1'));
+  const started = Date.now();
+  await h.bridge.shutdown();
+  assert.ok(Date.now() - started < 1_000, 'shutdown must not wait for the hung kill');
+  assert.deepEqual(exitsFor(h.sent, 'g1'), [{ type: 'exit', reqId: 'g1', code: null, signal: null, cancelled: true }]);
 });

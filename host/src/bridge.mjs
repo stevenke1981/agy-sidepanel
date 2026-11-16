@@ -17,6 +17,7 @@ export const HOST_VERSION = '1.0.0';
 const VERSION_TIMEOUT_MS = 5_000;
 const MODELS_TIMEOUT_MS = 30_000;
 const KILL_TIMEOUT_MS = 15_000;
+const KILL_GRACE_MS = 3_000; // bounded wait for a killed child to exit before its EXIT is synthesized
 
 const defaultFs = Object.freeze({
   existsSync,
@@ -111,17 +112,17 @@ function makeContext(options) {
     killTree: options.killTree ?? killProcessTree,
     probeVersion: options.probeVersion ?? probeVersionWith(spawnImpl, env),
     idleTimeoutMs: options.idleTimeoutMs ?? LIMITS.RUN_IDLE_TIMEOUT_MS,
+    killGraceMs: options.killGraceMs ?? KILL_GRACE_MS,
     log: options.log ?? createLogger(env, fsImpl),
     runs: new Map(),
     usedRunIds: new Set(),
-    killing: new Set(),
     version: null,
   };
 }
 
 /**
  * Creates the request dispatcher.
- * options: send(frameObject), spawnImpl, env, fsImpl, killTree, probeVersion, idleTimeoutMs, log.
+ * options: send(frameObject), spawnImpl, env, fsImpl, killTree, probeVersion, idleTimeoutMs, killGraceMs, log.
  */
 export function createBridge(options = {}) {
   const ctx = makeContext(options);
@@ -265,10 +266,18 @@ function spawnOptions(ctx, cwd) {
   return { cwd, shell: false, windowsHide: true, env: ctx.env, stdio: ['pipe', 'pipe', 'pipe'] };
 }
 
-function startRun(ctx, plan) {
+/** A run's `ended` promise resolves exactly once, when its single EXIT has been emitted. */
+function createRun(reqId) {
   const run = {
-    reqId: plan.reqId, child: null, cancelled: false, done: false, idleTimer: null, splitters: [],
+    reqId, child: null, cancelled: false, done: false, idleTimer: null, graceTimer: null,
+    splitters: [], resolveEnded: null, ended: null,
   };
+  run.ended = new Promise((resolve) => { run.resolveEnded = resolve; });
+  return run;
+}
+
+function startRun(ctx, plan) {
+  const run = createRun(plan.reqId);
   let child;
   try {
     child = ctx.spawnImpl(plan.agyPath, buildArgs(plan.options), spawnOptions(ctx, plan.cwd));
@@ -299,6 +308,10 @@ function attachRun(ctx, run, prompt) {
   run.splitters = [outSplit, errSplit];
   child.on('error', (error) => onRunError(ctx, run, error));
   child.on('close', (code, signal) => finishRun(ctx, run, code, signal));
+  // A cancelled run drops its output anyway, so do not wait for stdio to close after the child exited.
+  child.on('exit', (code, signal) => {
+    if (run.cancelled) finishRun(ctx, run, code, signal);
+  });
   child.stdout?.on('data', (chunk) => {
     armIdleTimer(ctx, run);
     outSplit.push(chunk);
@@ -338,8 +351,11 @@ function parseJson(text) {
   }
 }
 
+/** True once output must be dropped: the run was cancelled or its EXIT was already emitted. */
+const isSilenced = (run) => run.cancelled || run.done;
+
 function onStdoutLine(ctx, run, line) {
-  if (run.cancelled || line.trim() === '') return;
+  if (isSilenced(run) || line.trim() === '') return;
   const parsed = parseJson(line);
   ctx.emit(parsed.ok
     ? { type: RES.EVENT, reqId: run.reqId, event: parsed.value }
@@ -347,12 +363,12 @@ function onStdoutLine(ctx, run, line) {
 }
 
 function onStderrLine(ctx, run, line) {
-  if (run.cancelled || line.trim() === '') return;
+  if (isSilenced(run) || line.trim() === '') return;
   ctx.emit({ type: RES.STDERR, reqId: run.reqId, text: line });
 }
 
 function overflowNote(ctx, run, stream) {
-  if (run.cancelled) return;
+  if (isSilenced(run)) return;
   ctx.emit({
     type: RES.STDERR,
     reqId: run.reqId,
@@ -372,17 +388,43 @@ function onIdle(ctx, run) {
   trackKill(ctx, run);
 }
 
-/** Starts the kill of a run's process tree; the promise is tracked so shutdown can await it. */
+/**
+ * Starts (or re-attempts) the kill of a run's process tree. The run always ends: by its child's
+ * exit, or by the grace timer's synthesized EXIT. `run.ended` is what shutdown awaits.
+ */
 function trackKill(ctx, run) {
-  if (!run.child) return;
-  const kill = Promise.resolve()
-    .then(() => ctx.killTree(run.child, ctx.env))
+  if (!run.child || run.done) return;
+  armGrace(ctx, run);
+  attemptKill(ctx, run);
+}
+
+/** Bounded wait for the child to exit; once it expires the run is ended with a synthesized EXIT. */
+function armGrace(ctx, run) {
+  if (run.graceTimer) return;
+  run.graceTimer = setTimeout(() => {
+    ctx.log('kill-grace-expired', { reqId: run.reqId });
+    finishRun(ctx, run, null, null);
+  }, ctx.killGraceMs);
+}
+
+/** Runs killTree off the current tick. A rejection or non-zero exit falls back to child.kill(). */
+function attemptKill(ctx, run) {
+  Promise.resolve()
+    .then(() => (run.done ? undefined : ctx.killTree(run.child, ctx.env)))
     .then((code) => {
-      if (code !== null && code !== 0) ctx.log('kill-nonzero', { reqId: run.reqId, code });
+      if (typeof code === 'number' && code !== 0) throw new Error(`killTree exited with code ${code}`);
     })
-    .catch((error) => ctx.log('kill-failed', { reqId: run.reqId, message: error.message }));
-  ctx.killing.add(kill);
-  kill.then(() => ctx.killing.delete(kill));
+    .catch((error) => onKillFailed(ctx, run, error));
+}
+
+function onKillFailed(ctx, run, error) {
+  if (run.done) return;
+  ctx.log('kill-failed', { reqId: run.reqId, message: error?.message });
+  try {
+    run.child.kill();
+  } catch (killError) {
+    ctx.log('child-kill-failed', { reqId: run.reqId, message: killError?.message });
+  }
 }
 
 function handleCancel(ctx, msg) {
@@ -392,10 +434,8 @@ function handleCancel(ctx, msg) {
     ctx.emit(errorMsg(reqId, ERR.UNKNOWN_RUN, 'no active run with this reqId'));
     return;
   }
-  if (!run.cancelled) {
-    run.cancelled = true;
-    trackKill(ctx, run);
-  }
+  run.cancelled = true;
+  trackKill(ctx, run); // a repeated cancel re-attempts the kill while the run is still alive
   ctx.emit({ type: RES.CANCELLED, reqId });
 }
 
@@ -405,6 +445,7 @@ function finishRun(ctx, run, code, signal) {
   for (const splitter of run.splitters) splitter.flush();
   run.done = true;
   clearTimeout(run.idleTimer);
+  clearTimeout(run.graceTimer);
   ctx.runs.delete(run.reqId);
   ctx.emit({
     type: RES.EXIT,
@@ -413,14 +454,17 @@ function finishRun(ctx, run, code, signal) {
     signal: typeof signal === 'string' ? signal : null,
     cancelled: run.cancelled,
   });
+  run.resolveEnded();
 }
 
+/** Kills every active run, then waits until each has ended (child exit or grace expiry). */
 async function shutdownRuns(ctx) {
-  for (const run of [...ctx.runs.values()]) {
+  const runs = [...ctx.runs.values()];
+  for (const run of runs) {
     run.cancelled = true;
     trackKill(ctx, run);
   }
-  await Promise.allSettled([...ctx.killing]);
+  await Promise.all(runs.map((run) => run.ended));
 }
 
 function launchIde(ctx, ide, target) {
