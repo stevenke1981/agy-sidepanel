@@ -1,0 +1,14 @@
+{
+  "name": "agy-chrome-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chrome extension + native messaging host bridging Chrome to the Google Antigravity agy CLI and IDE.",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test host/test/ extension/test/",
+    "check": "node scripts/check.mjs",
+    "build": "node scripts/build.mjs"
+  }
+}

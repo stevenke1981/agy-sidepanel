@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "agy Bridge — Antigravity CLI for Chrome",
+  "short_name": "agy Bridge",
+  "version": "1.0.0",
+  "description": "Chat with the local Google Antigravity agy CLI from a Chrome side panel, with page and selection context.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAip9l2XKVGsYtgtJiztlZvE2CRzGimzGog7DD4W8lZ2R32fhTwq3/KsBOiDqUOO0ou4JSMMkPcx9TL1GC78mNsGKQIyO9JN4fVrQ5e19Zo0EsPFGfXzxUxqJmDImFkhG2uyhl2s0F3L0sGInu9abGHbU5R6VD4uJBDTbWhWv/T2hgSbCFiqiouWm/dcnmA7a9yzGwHchqRqjjsHUW28HU23HXLmtIEUx+wk9nmZLN4AcuJolnAOZtLOPTKSi+zJ1urkosLfsYi2M3WmcehuapSKOBrv4OXMCAGS2nQO6pmDNhDXVeU8yzvADnPWuDEXxAeXTQQEAwerYqWp/kZv3SvwIDAQAB",
+  "minimum_chrome_version": "116",
+  "permissions": ["sidePanel", "nativeMessaging", "storage", "contextMenus", "scripting", "activeTab"],
+  "optional_host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "src/background.js", "type": "module" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "options_page": "options.html",
+  "action": { "default_title": "Open agy Bridge", "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" } },
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "commands": {
+    "_execute_action": { "suggested_key": { "default": "Alt+Shift+A" }, "description": "Open agy Bridge side panel" }
+  }
+}
