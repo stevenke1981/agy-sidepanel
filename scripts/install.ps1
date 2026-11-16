@@ -247,6 +247,8 @@ function Install-Payload {
         Write-Step 'rendering host\agy-bridge.cmd and host\com.agy.bridge.json'
         Write-HostCommandFile (Join-Path $SourceRoot 'host\agy-bridge.cmd.tpl') $CmdPath $NodeExe
         Write-HostManifest $ManifestPath $CmdPath
+        # Mark the install root as ESM so Node does not reparse protocol.js or search parent dirs.
+        Write-Utf8File (Join-Path $InstallDir 'package.json') "{ `"private`": true, `"type`": `"module`" }`n"
     } catch {
         Write-Host 'install failed; restoring previous files'
         Restore-PreviousInstall $InstallDir $backupDir $hadPrevious
