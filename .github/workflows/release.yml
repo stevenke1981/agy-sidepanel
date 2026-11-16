@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: build and publish (windows-latest, node 22)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Tag must equal v<manifest version>
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./extension/manifest.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match extension/manifest.json version ${version}" >&2
+            exit 1
+          fi
+
+      - name: Unit tests
+        shell: bash
+        run: node scripts/run-tests.mjs
+
+      - name: Static check
+        run: node scripts/check.mjs
+
+      - name: Build release artifacts
+        run: node scripts/build.mjs
+
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" dist/*.zip dist/SHA256SUMS.txt --title "$TAG" --generate-notes

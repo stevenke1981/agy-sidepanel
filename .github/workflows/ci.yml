@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # Bash on every OS so the shell expands the globs; Node 20 does not expand patterns itself.
+      - name: Unit tests
+        shell: bash
+        run: node scripts/run-tests.mjs
+
+      - name: Static check
+        run: node scripts/check.mjs
+
+      - name: Build release artifacts
+        run: node scripts/build.mjs
+
+  install-smoke:
+    name: install smoke (windows-latest)
+    runs-on: windows-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Resolve node path
+        id: node
+        shell: pwsh
+        run: |
+          $node = (Get-Command node -CommandType Application).Source
+          "path=$node" >> $env:GITHUB_OUTPUT
+
+      - name: Install with Windows PowerShell 5.1
+        shell: pwsh
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'agyb'
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${{ github.workspace }}\scripts\install.ps1" -InstallDir $target -NodePath "${{ steps.node.outputs.path }}"
+          if ($LASTEXITCODE -ne 0) { throw "install.ps1 (Windows PowerShell 5.1) exited $LASTEXITCODE" }
+
+      - name: Verify registration, manifest and cmd
+        shell: pwsh
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'agyb'
+          $cmd = Join-Path $target 'host\agy-bridge.cmd'
+          $manifest = Join-Path $target 'host\com.agy.bridge.json'
+          foreach ($p in @($cmd, $manifest, (Join-Path $target 'extension\manifest.json'), (Join-Path $target 'host\src\bridge.mjs'))) {
+              if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { throw "missing installed file: $p" }
+          }
+
+          $key = 'HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.agy.bridge'
+          $registered = (Get-Item -LiteralPath $key -ErrorAction Stop).GetValue('')
+          if ($registered -ne $manifest) { throw "registry default is '$registered', expected '$manifest'" }
+
+          $json = Get-Content -LiteralPath $manifest -Raw -Encoding UTF8 | ConvertFrom-Json
+          if ($json.name -ne 'com.agy.bridge' -or $json.type -ne 'stdio') { throw 'host manifest name/type wrong' }
+          if ($json.path -ine $cmd) { throw "host manifest path '$($json.path)' is not '$cmd'" }
+          $origins = @($json.allowed_origins)
+          if ($origins.Count -ne 1 -or $origins[0] -ne 'chrome-extension://dnildepikbjklalofggmgafohplflpgg/') { throw 'allowed_origins wrong' }
+
+          $bytes = [System.IO.File]::ReadAllBytes($cmd)
+          if ($bytes | Where-Object { $_ -gt 127 }) { throw 'agy-bridge.cmd is not ASCII' }
+          $text = [System.Text.Encoding]::ASCII.GetString($bytes)
+          if ($text -match '(?<!\r)\n') { throw 'agy-bridge.cmd has a bare LF' }
+          if ($text.Contains('{{NODE}}')) { throw 'agy-bridge.cmd placeholder not rendered' }
+          if (-not $text.Contains('"' + "${{ steps.node.outputs.path }}" + '"')) { throw 'agy-bridge.cmd does not reference node' }
+          Write-Host "verified: $key -> $registered"
+
+      - name: Uninstall with PowerShell 7
+        shell: pwsh
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'agyb'
+          pwsh -NoProfile -NonInteractive -File "${{ github.workspace }}\scripts\uninstall.ps1" -InstallDir $target
+          if ($LASTEXITCODE -ne 0) { throw "uninstall.ps1 exited $LASTEXITCODE" }
+          if (Test-Path -LiteralPath (Join-Path $target 'host')) { throw 'host folder still present after uninstall' }
+          if (Test-Path -LiteralPath 'HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.agy.bridge') { throw 'registry key still present after uninstall' }
+          Write-Host 'uninstall verified'
