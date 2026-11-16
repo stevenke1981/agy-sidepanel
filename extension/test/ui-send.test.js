@@ -10,16 +10,27 @@ import { initialState } from '../src/lib/transcript.js';
 
 const SETTINGS = Object.freeze({ model: '', effort: '', mode: 'plan', cwd: '' });
 
-test('decidePageContext uses page context in plan and accept-edits modes without skip', () => {
+test('decidePageContext uses page context only in plan mode without skip (empty mode means plan)', () => {
   assert.deepEqual(decidePageContext({ wantPage: true, skipPermissions: false, mode: 'plan' }), { use: true, notice: '' });
-  assert.equal(decidePageContext({ wantPage: true, skipPermissions: false, mode: 'accept-edits' }).use, true);
+  assert.equal(decidePageContext({ wantPage: true, skipPermissions: false, mode: '' }).use, true);
 });
 
-test('decidePageContext sends without page context (with a notice) in skip or auto modes', () => {
+test('decidePageContext sends without page context (with a notice) in skip, auto or accept-edits modes', () => {
   const skipped = decidePageContext({ wantPage: true, skipPermissions: true, mode: 'plan' });
   assert.equal(skipped.use, false);
-  assert.match(skipped.notice, /skip-permissions or auto mode/);
+  assert.match(skipped.notice, /only sent in plan mode/);
   assert.equal(decidePageContext({ wantPage: true, skipPermissions: false, mode: 'auto' }).use, false);
+  const edits = decidePageContext({ wantPage: true, skipPermissions: false, mode: 'accept-edits' });
+  assert.equal(edits.use, false);
+  assert.match(edits.notice, /only sent in plan mode/);
+});
+
+test('validateRunOptions rejects page context outside plan mode (host-side guard)', () => {
+  for (const mode of ['accept-edits', 'auto', '']) {
+    assert.equal(validateRunOptions({ mode, hasPageContext: true }).ok, false, `mode=${mode}`);
+  }
+  assert.equal(validateRunOptions({ mode: 'plan', hasPageContext: true }).ok, true);
+  assert.equal(validateRunOptions({ mode: 'accept-edits', hasPageContext: false }).ok, true);
 });
 
 test('decidePageContext is silent when the user did not want page context', () => {

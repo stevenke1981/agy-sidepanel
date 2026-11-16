@@ -79,7 +79,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
 /**
  * Validate RunOptions. Returns {ok:true, value} with a normalized copy or {ok:false, message}.
  * RunOptions: {model?, effort?, mode?, cwd?, conversationId?, skipPermissions?, hasPageContext?}
- * When hasPageContext is true, skipPermissions and mode 'auto' are rejected (prompt-injection guard).
+ * When hasPageContext is true, only mode 'plan' without skipPermissions is accepted (prompt-injection guard):
+ * page text is untrusted, so agy must not be able to write files while reading it.
  */
 export function validateRunOptions(options) {
   const o = options ?? {};
@@ -107,8 +108,8 @@ export function validateRunOptions(options) {
   }
   out.skipPermissions = o.skipPermissions === true;
   out.hasPageContext = o.hasPageContext === true;
-  if (out.hasPageContext && (out.skipPermissions || out.mode === 'auto')) {
-    return fail('page context cannot be combined with skipPermissions or auto mode');
+  if (out.hasPageContext && (out.skipPermissions || out.mode !== 'plan')) {
+    return fail('page context requires plan mode without skipPermissions');
   }
   return { ok: true, value: out };
 }

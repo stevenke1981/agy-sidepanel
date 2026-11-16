@@ -36,7 +36,7 @@ Uninstall: `scripts\uninstall.ps1`. Add `-Purge` to also delete the workspace.
 ## Security model
 - The host runs only `agy.exe` and the IDE. It always uses `shell:false` and argument arrays, and validates every request against `extension/src/lib/protocol.js`. Values may not start with `-`. `cwd` must be a drive-letter absolute path; UNC paths, device paths and `..` are rejected.
 - Default working directory is `%LOCALAPPDATA%\agy-bridge\workspace`, not your home folder. The default mode is `plan`, which is read-only in agy.
-- **Prompt-injection guard**: when page context is attached, the host rejects `--dangerously-skip-permissions` and `auto` mode.
+- **Prompt-injection guard**: page context is only sent in `plan` mode without skip-permissions. The host rejects any other combination, because page text is untrusted and must not drive file writes.
 - "Skip permissions" lasts for the browser session only (`chrome.storage.session`). While it is on, the panel shows a red banner.
 - The UI renders model and page text with `textContent` only. It never uses `innerHTML`.
 - The host never writes prompts to disk. A debug log is written only when `AGY_BRIDGE_LOG` is set.

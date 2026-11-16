@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  MAX_STDERR_CHARS, MAX_TOOL_INFO_CHARS, addUserMessage, applyHostMessage, hasActiveRun,
+  MAX_STDERR_CHARS, MAX_TOOL_INFO_CHARS, abandonRunningRuns, addUserMessage, applyHostMessage, hasActiveRun,
   initialState, newConversation, startRun,
 } from '../src/lib/transcript.js';
 import { ERR, RES } from '../src/lib/protocol.js';
@@ -262,4 +262,19 @@ test('non-object messages are ignored', () => {
   const state = initialState();
   assert.equal(applyHostMessage(state, null), state);
   assert.equal(applyHostMessage(state, 'text'), state);
+});
+
+test('abandonRunningRuns marks only running runs as failed and clears hasActiveRun', () => {
+  let s = initialState();
+  s = startRun(s, RUN_A);
+  s = startRun(s, RUN_B);
+  s = applyHostMessage(s, { type: RES.EXIT, reqId: RUN_B, code: 0, signal: null, cancelled: false });
+  const before = s;
+  const after = abandonRunningRuns(s, 'Host disconnected: gone');
+  assert.equal(after.runs[RUN_A].phase, 'error');
+  assert.equal(after.runs[RUN_A].error, 'Host disconnected: gone');
+  assert.equal(after.runs[RUN_B].phase, 'done');
+  assert.equal(hasActiveRun(after), false);
+  assert.equal(before.runs[RUN_A].phase, 'running', 'input state must not be mutated');
+  assert.equal(abandonRunningRuns(after, 'x'), after, 'no running runs returns the same state');
 });

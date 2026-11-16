@@ -30,14 +30,11 @@ function buildSummary(doc, msg, state) {
   return summary;
 }
 
-/** The view maps a step's text to its toolInfo, so text counts as output only when it differs from toolInfo. */
+/** agy reports only tool arguments (toolInfo) for a step; it has no separate tool output to show. */
 function buildDetail(doc, msg) {
   const body = el(doc, 'div', 'step-body');
-  const hasInfo = Boolean(msg.toolInfo);
-  const hasOutput = Boolean(msg.text) && msg.text !== msg.toolInfo;
-  if (hasInfo) body.appendChild(el(doc, 'pre', 'step-info', msg.toolInfo));
-  if (hasOutput) body.appendChild(el(doc, 'pre', 'step-out', msg.text));
-  if (!hasInfo && !hasOutput) body.appendChild(el(doc, 'span', 'step-empty', 'No details.'));
+  if (msg.toolInfo) body.appendChild(el(doc, 'pre', 'step-info', msg.toolInfo));
+  else body.appendChild(el(doc, 'span', 'step-empty', 'No details.'));
   return body;
 }
 

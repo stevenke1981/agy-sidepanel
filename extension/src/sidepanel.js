@@ -1,7 +1,7 @@
 // Side panel orchestration: wires DOM events to the native client, transcript reducer and storage.
 // Rendering lives in ui/*.js; decisions are in ui/send-plan.js, ui/context-view.js and ui/pending.js;
 // the page-context flow is ui/page-flow.js and the context-menu hand-off is ui/pending-flow.js.
-import { initialState, applyHostMessage, addUserMessage, startRun, newConversation } from './lib/transcript.js';
+import { initialState, applyHostMessage, addUserMessage, startRun, newConversation, abandonRunningRuns } from './lib/transcript.js';
 import { buildPrompt, makeNonce, summarizeContext } from './lib/prompt.js';
 import { loadSettings, saveSettings, getSkipPermissions, loadChat, saveChat, clearChat } from './lib/settings.js';
 import { createNativeClient } from './lib/native-client.js';
@@ -98,10 +98,12 @@ async function connectHost() {
 
 function handleDisconnect(message) {
   const text = errorText(message);
+  app.state = abandonRunningRuns(app.state, `Host disconnected: ${text}`);
   if (app.activeRun) {
     app.activeRun = null;
     appendNote('error', `Host disconnected: ${text}`);
   }
+  requestRender();
   showOnboarding(text);
 }
 
@@ -378,7 +380,8 @@ async function loadPersistedState() {
   app.windowId = win.id;
   app.settings = await loadSettings();
   app.skipPermissions = await getSkipPermissions();
-  app.state = (await loadChat(app.windowId)) ?? initialState();
+  const saved = (await loadChat(app.windowId)) ?? initialState();
+  app.state = abandonRunningRuns(saved, 'Interrupted: the side panel was closed while this run was active.');
 }
 
 async function boot() {

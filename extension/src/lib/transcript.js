@@ -157,6 +157,21 @@ export function hasActiveRun(state) {
 }
 
 /**
+ * Mark every still-running run as failed. Used when the host connection drops or a saved chat is restored,
+ * because no EXIT will ever arrive for those runs.
+ * @param {TranscriptState} state
+ * @param {string} message
+ * @returns {TranscriptState}
+ */
+export function abandonRunningRuns(state, message) {
+  const running = Object.values(state.runs).filter((r) => r.phase === 'running');
+  if (running.length === 0) return state;
+  const runs = { ...state.runs };
+  for (const run of running) runs[run.reqId] = { ...run, phase: 'error', error: clip(str(message)) };
+  return { ...state, runs };
+}
+
+/**
  * Apply one host -> extension message. Messages for unknown reqIds (e.g. after newConversation) are ignored.
  * @param {TranscriptState} state
  * @param {object} msg

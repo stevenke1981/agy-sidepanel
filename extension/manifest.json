@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "agy Bridge — Antigravity CLI for Chrome",
   "short_name": "agy Bridge",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Chat with the local Google Antigravity agy CLI from a Chrome side panel, with page and selection context.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAip9l2XKVGsYtgtJiztlZvE2CRzGimzGog7DD4W8lZ2R32fhTwq3/KsBOiDqUOO0ou4JSMMkPcx9TL1GC78mNsGKQIyO9JN4fVrQ5e19Zo0EsPFGfXzxUxqJmDImFkhG2uyhl2s0F3L0sGInu9abGHbU5R6VD4uJBDTbWhWv/T2hgSbCFiqiouWm/dcnmA7a9yzGwHchqRqjjsHUW28HU23HXLmtIEUx+wk9nmZLN4AcuJolnAOZtLOPTKSi+zJ1urkosLfsYi2M3WmcehuapSKOBrv4OXMCAGS2nQO6pmDNhDXVeU8yzvADnPWuDEXxAeXTQQEAwerYqWp/kZv3SvwIDAQAB",
   "minimum_chrome_version": "116",
