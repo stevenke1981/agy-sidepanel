@@ -32,12 +32,20 @@ export async function loadSettings() {
  * @param {Partial<Settings>} partial
  * @returns {Promise<Settings>}
  */
-export async function saveSettings(partial) {
-  const current = await loadSettings();
-  const next = mergeSettings({ ...current, ...partial });
-  await chrome.storage.local.set({ [SETTINGS_KEY]: next });
-  return next;
+export function saveSettings(partial) {
+  // Serialize read-merge-write so rapid successive changes cannot overwrite each other (lost update).
+  const run = saveQueue.then(async () => {
+    const current = await loadSettings();
+    const next = mergeSettings({ ...current, ...partial });
+    await chrome.storage.local.set({ [SETTINGS_KEY]: next });
+    return next;
+  });
+  saveQueue = run.catch(() => undefined);
+  return run;
 }
+
+/** Tail of the pending save chain (module-local; never rejects). */
+let saveQueue = Promise.resolve();
 
 /**
  * skipPermissions lives in chrome.storage.session: it is cleared when the browser closes.

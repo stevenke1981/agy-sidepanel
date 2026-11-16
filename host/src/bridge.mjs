@@ -378,6 +378,7 @@ function overflowNote(ctx, run, stream) {
 
 function armIdleTimer(ctx, run) {
   clearTimeout(run.idleTimer);
+  if (run.done) return; // late output after finalize must not re-arm
   run.idleTimer = setTimeout(() => onIdle(ctx, run), ctx.idleTimeoutMs);
   run.idleTimer.unref(); // the open stdin keeps the host alive; the timer must not pin it
 }
