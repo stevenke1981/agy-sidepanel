@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>agy Bridge</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-mark" src="icons/icon32.png" width="20" height="20" alt="">
+      <div class="status" role="status" aria-live="polite">
+        <span class="dot" id="status-dot" data-state="connecting" aria-hidden="true"></span>
+        <span id="status-text">connecting…</span>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="icon-btn" id="btn-ide" aria-label="Open workspace in Antigravity IDE" title="Open workspace in Antigravity IDE" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5H10l2 2.5h6.5A1.5 1.5 0 0 1 20 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/></svg>
+      </button>
+      <button type="button" class="icon-btn" id="btn-new" aria-label="New chat" title="New chat">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button type="button" class="icon-btn" id="btn-settings" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-2.6-1.5L14 3h-4l-.4 2.5A7.4 7.4 0 0 0 7 7l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 3l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 2.6 1.5L10 21h4l.4-2.5a7.4 7.4 0 0 0 2.6-1.5l2.4 1 2-3.4z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="controls">
+    <label class="field">
+      <span class="field-label">Model</span>
+      <select id="model-select"><option value="">default</option></select>
+    </label>
+    <label class="field">
+      <span class="field-label">Mode</span>
+      <select id="mode-select">
+        <option value="plan">plan</option>
+        <option value="accept-edits">accept-edits</option>
+        <option value="auto">auto</option>
+      </select>
+    </label>
+  </div>
+
+  <p class="session-badge" id="session-badge" hidden></p>
+
+  <div class="banner" id="skip-banner" role="alert" hidden>
+    <strong>Skip permissions is ON</strong>
+    <span>agy runs tools without asking. Turn it off in Settings.</span>
+  </div>
+
+  <section class="onboarding" id="onboarding" aria-labelledby="onboarding-title" hidden>
+    <h2 id="onboarding-title">Native host is not connected</h2>
+    <p class="muted">Chrome could not reach the agy Bridge host.</p>
+    <p class="mono error-detail" id="onboarding-error"></p>
+    <p class="muted">Run this in PowerShell from the extracted folder, then press Retry:</p>
+    <pre class="cmd"><code>powershell -ExecutionPolicy Bypass -File scripts\install.ps1</code></pre>
+    <button type="button" class="btn btn-primary" id="btn-retry">Retry</button>
+  </section>
+
+  <main class="transcript" id="transcript" role="log" aria-label="Conversation"></main>
+  <button type="button" class="jump" id="btn-jump" hidden>Jump to latest</button>
+
+  <p class="usage" id="usage" hidden></p>
+  <p class="toast" id="toast" role="status" hidden></p>
+
+  <footer class="composer">
+    <div class="context-row">
+      <button type="button" class="toggle" id="btn-include" aria-pressed="true">Include page</button>
+      <div class="context-slot" id="context-slot">
+        <div class="context-chip-wrap" id="chip-wrap" hidden>
+          <span class="context-chip" id="context-chip">
+            <span class="chip-title" id="chip-title"></span>
+            <span class="chip-host" id="chip-host"></span>
+            <span class="chip-chars" id="chip-chars"></span>
+          </span>
+          <button type="button" class="chip-drop" id="btn-drop" aria-label="Remove page context for this message only" title="Remove for this message">×</button>
+        </div>
+        <p class="context-note" id="context-note" hidden></p>
+        <button type="button" class="btn btn-small" id="btn-allow" hidden>Allow this site</button>
+      </div>
+    </div>
+    <div class="input-box">
+      <label class="sr-only" for="prompt">Message</label>
+      <textarea id="prompt" rows="1" placeholder="Ask agy…" aria-describedby="prompt-hint"></textarea>
+      <button type="button" class="send" id="btn-send" aria-label="Send message">Send</button>
+    </div>
+    <p class="hint" id="prompt-hint">Enter sends · Shift+Enter for a new line</p>
+  </footer>
+</div>
+<script type="module" src="src/sidepanel.js"></script>
+</body>
+</html>
