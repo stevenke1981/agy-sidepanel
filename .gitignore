@@ -3,3 +3,4 @@ dist/
 *.pem
 result_*.md
 .worktrees/
+.claude/
