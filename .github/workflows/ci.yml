@@ -49,7 +49,7 @@ jobs:
         id: node
         shell: pwsh
         run: |
-          $node = (Get-Command node -CommandType Application).Source
+          $node = (Get-Command node -CommandType Application | Select-Object -First 1).Source
           "path=$node" >> $env:GITHUB_OUTPUT
 
       - name: Install with Windows PowerShell 5.1
