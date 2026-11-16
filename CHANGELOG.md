@@ -6,6 +6,7 @@
 - Removed the dead "tool output" branch from the step row; agy reports only tool arguments.
 
 ### Changed
+- License changed from MIT to Apache-2.0.
 - Page context is now only sent in `plan` mode without skip-permissions. `accept-edits` and the agy default mode can write files, so untrusted page text is no longer combined with them. The host enforces the same rule.
 
 ## [1.0.0] - 2026-11-16

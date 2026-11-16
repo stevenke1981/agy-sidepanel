@@ -51,4 +51,4 @@ AGY_BRIDGE_E2E=1 node --test host/test/e2e.test.mjs   # live test against real a
 Layout: `extension/` (MV3, no bundler), `host/` (native host), `scripts/` (install, build, checks), `docs/team/v1/BRIEF.md` (design contract).
 
 ## License
-MIT
+Copyright 2026 stevenke1981. Licensed under the [Apache License, Version 2.0](LICENSE).

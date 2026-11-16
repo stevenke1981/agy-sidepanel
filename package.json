@@ -4,7 +4,7 @@
   "private": true,
   "description": "Chrome extension + native messaging host bridging Chrome to the Google Antigravity agy CLI and IDE.",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "engines": { "node": ">=20" },
   "scripts": {
     "test": "node scripts/run-tests.mjs",
