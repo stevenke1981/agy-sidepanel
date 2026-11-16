@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <title>agy Bridge 設定</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="page">
+    <header class="page-head">
+      <h1>agy Bridge 設定</h1>
+      <p class="lede">設定會儲存於本機。略過權限選項僅在本瀏覽器工作階段有效。</p>
+    </header>
+
+    <section class="card" aria-labelledby="host-heading">
+      <h2 id="host-heading">Native host 狀態</h2>
+      <p id="host-status" class="host-status" role="status" aria-live="polite">檢查中…</p>
+      <div id="host-hint" class="host-hint" hidden>
+        <p>尚未安裝或無法啟動 host。請在擴充功能資料夾的上層目錄，以 PowerShell 執行：</p>
+        <p><code id="install-command"></code></p>
+      </div>
+    </section>
+
+    <form id="settings-form" class="card" novalidate>
+      <h2>執行設定</h2>
+
+      <div class="field">
+        <label for="model">模型</label>
+        <input id="model" name="model" type="text" list="model-list" autocomplete="off" placeholder="留空＝agy 預設" aria-describedby="model-error">
+        <datalist id="model-list"></datalist>
+        <p id="model-error" class="field-error" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="effort">推理強度（effort）</label>
+        <select id="effort" name="effort"></select>
+      </div>
+
+      <div class="field">
+        <label for="mode">模式（mode）</label>
+        <select id="mode" name="mode" aria-describedby="mode-error"></select>
+        <p id="mode-error" class="field-error" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="cwd">工作目錄（cwd）</label>
+        <input id="cwd" name="cwd" type="text" autocomplete="off" spellcheck="false" placeholder="留空＝host 預設工作區" aria-describedby="cwd-hint cwd-error">
+        <p id="cwd-hint" class="field-hint">須為磁碟機絕對路徑，例如 D:\專案。</p>
+        <p id="cwd-error" class="field-error" hidden></p>
+      </div>
+
+      <fieldset class="field">
+        <legend>頁面上下文</legend>
+        <label class="check">
+          <input id="includePageContext" name="includePageContext" type="checkbox">
+          <span>送出時附帶目前分頁的標題、網址與內容</span>
+        </label>
+        <label for="maxContextChars">頁面內容字數上限</label>
+        <input id="maxContextChars" name="maxContextChars" type="number" min="1000" max="100000" step="1000" inputmode="numeric" aria-describedby="max-error">
+        <p id="max-error" class="field-error" hidden></p>
+      </fieldset>
+
+      <fieldset class="field danger">
+        <legend>略過權限詢問（高風險）</legend>
+        <label class="check">
+          <input id="skipPermissions" name="skipPermissions" type="checkbox" aria-describedby="skip-warning skip-error">
+          <span>啟用 --dangerously-skip-permissions</span>
+        </label>
+        <p id="skip-warning" class="warning">警告：啟用後 agy 會略過權限詢問並直接執行工具，可能修改或刪除檔案。僅在完全信任的工作目錄使用；瀏覽器關閉即自動失效。與頁面內容不可併用。</p>
+        <p id="skip-state" class="skip-state" aria-live="polite"></p>
+        <p id="skip-error" class="field-error" hidden></p>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit" class="primary">儲存設定</button>
+        <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
+      </div>
+    </form>
+  </main>
+  <script type="module" src="options.js"></script>
+</body>
+</html>
