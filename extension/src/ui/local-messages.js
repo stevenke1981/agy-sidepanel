@@ -1,24 +1,13 @@
-// UI-originated transcript rows (notes, errors) that do not come from the host.
-// Returns new state objects; the transcript state itself is never mutated.
-
-let localCounter = 0;
-
-/** Unique-enough id for UI-only rows; never collides with host-derived ids. */
-export function makeLocalId(now = Date.now()) {
-  localCounter += 1;
-  return `local-${now.toString(36)}-${localCounter}`;
-}
+// UI-originated transcript rows (start-of-run notices, disconnects, failed starts). They go through the
+// reducer's appendNote so they share the host row format (id, kind, reqId:null, length cap).
+import { appendNote } from '../lib/transcript.js';
 
 /**
- * @param {string} id
- * @param {'note'|'error'} role
+ * @param {object} state TranscriptState
  * @param {string} text
+ * @param {'note'|'error'} [kind]
+ * @returns {object} new TranscriptState with the note row appended
  */
-export function makeLocalMessage(id, role, text) {
-  return { id, role, text: String(text), reqId: null };
-}
-
-/** @returns {object} new state with the message appended */
-export function appendLocalMessage(state, message) {
-  return { ...state, messages: [...state.messages, message] };
+export function appendLocalNote(state, text, kind = 'note') {
+  return appendNote(state, text, kind);
 }

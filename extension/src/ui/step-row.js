@@ -30,10 +30,11 @@ function buildSummary(doc, msg, state) {
   return summary;
 }
 
+/** The view maps a step's text to its toolInfo, so text counts as output only when it differs from toolInfo. */
 function buildDetail(doc, msg) {
   const body = el(doc, 'div', 'step-body');
   const hasInfo = Boolean(msg.toolInfo);
-  const hasOutput = Boolean(msg.text);
+  const hasOutput = Boolean(msg.text) && msg.text !== msg.toolInfo;
   if (hasInfo) body.appendChild(el(doc, 'pre', 'step-info', msg.toolInfo));
   if (hasOutput) body.appendChild(el(doc, 'pre', 'step-out', msg.text));
   if (!hasInfo && !hasOutput) body.appendChild(el(doc, 'span', 'step-empty', 'No details.'));

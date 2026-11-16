@@ -13,7 +13,8 @@ import {
   renderUsage
 } from './ui/panel-render.js';
 import { buildRunOptions, shouldSendOnKey } from './ui/send-plan.js';
-import { appendLocalMessage, makeLocalId, makeLocalMessage } from './ui/local-messages.js';
+import { appendLocalNote } from './ui/local-messages.js';
+import { toViewModel } from './ui/view-model.js';
 import { createPageFlow } from './ui/page-flow.js';
 import { createPendingFlow, PENDING_KEY } from './ui/pending-flow.js';
 
@@ -125,13 +126,14 @@ function requestRender() {
 }
 
 function renderNow() {
+  const view = toViewModel(app.state);
   const busy = app.activeRun !== null;
-  app.renderer.render(el.transcript, app.state.messages, { busy });
-  renderSessionBadge(el, app.state);
-  renderUsage(el, app.state);
+  app.renderer.render(el.transcript, view.messages, { busy });
+  renderSessionBadge(el, view);
+  renderUsage(el, view);
   renderSendButton(el, busy);
   if (app.stick) el.transcript.scrollTop = el.transcript.scrollHeight;
-  el['btn-jump'].hidden = app.stick || app.state.messages.length === 0;
+  el['btn-jump'].hidden = app.stick || view.messages.length === 0;
 }
 
 function refreshControls() {
@@ -153,8 +155,8 @@ function showToast(text) {
 
 // ---- Transcript state -----------------------------------------------------
 
-function appendNote(role, text) {
-  app.state = appendLocalMessage(app.state, makeLocalMessage(makeLocalId(), role, text));
+function appendNote(kind, text) {
+  app.state = appendLocalNote(app.state, text, kind);
   requestRender();
   scheduleSave();
 }
@@ -242,7 +244,7 @@ function startHostRun({ prompt, options, text, page }) {
   app.activeRun = handle;
   const contextSummary = page.context ? summarizeContext(page.context) : null;
   let state = addUserMessage(app.state, text, contextSummary);
-  for (const notice of page.notices) state = appendLocalMessage(state, makeLocalMessage(makeLocalId(), 'note', notice));
+  for (const notice of page.notices) state = appendLocalNote(state, notice);
   app.state = startRun(state, handle.reqId);
   app.dropped = false;
   el.prompt.value = '';

@@ -5,7 +5,8 @@ import {
   buildRunOptions, decidePageContext, quoteSelection, sendButtonView, shouldSendOnKey, unavailableNotice
 } from '../src/ui/send-plan.js';
 import { composeFromPending, parsePendingPrompt } from '../src/ui/pending.js';
-import { appendLocalMessage, makeLocalId, makeLocalMessage } from '../src/ui/local-messages.js';
+import { appendLocalNote } from '../src/ui/local-messages.js';
+import { initialState } from '../src/lib/transcript.js';
 
 const SETTINGS = Object.freeze({ model: '', effort: '', mode: 'plan', cwd: '' });
 
@@ -98,20 +99,17 @@ test('composeFromPending quotes a selection above existing text and always enabl
   assert.deepEqual(page, { text: 'keep me', includePage: true });
 });
 
-test('appendLocalMessage returns a new state and never mutates the previous one', () => {
+test('appendLocalNote appends a reducer-format note row and never mutates the previous state', () => {
   // Arrange
-  const before = { messages: [{ id: 'a', role: 'user', text: 'hi' }], running: false };
+  const before = initialState();
   // Act
-  const after = appendLocalMessage(before, makeLocalMessage('local-1', 'note', 'FYI'));
+  const after = appendLocalNote(before, 'FYI');
+  const failed = appendLocalNote(after, 'Host disconnected', 'error');
   // Assert
-  assert.equal(before.messages.length, 1);
-  assert.equal(after.messages.length, 2);
+  assert.equal(before.rows.length, 0);
   assert.notEqual(after, before);
-  assert.equal(after.messages[1].role, 'note');
-  assert.equal(after.messages[1].reqId, null);
-});
-
-test('makeLocalId yields distinct ids even within the same millisecond', () => {
-  const ids = new Set([makeLocalId(1), makeLocalId(1), makeLocalId(1)]);
-  assert.equal(ids.size, 3);
+  assert.deepEqual(after.rows, [{ kind: 'note', reqId: null, text: 'FYI', id: 1 }]);
+  assert.equal(failed.rows[1].kind, 'error');
+  assert.equal(failed.rows[1].reqId, null);
+  assert.equal(failed.nextId, 3);
 });

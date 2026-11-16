@@ -6,18 +6,20 @@ import { formatSessionBadge, formatUsage } from './view-format.js';
 import { sendButtonView } from './send-plan.js';
 import { summarizeContext } from '../lib/prompt.js';
 
-export function renderSessionBadge(el, state) {
-  const text = formatSessionBadge(state);
+/** @param {object} el element map @param {object} view toViewModel() result */
+export function renderSessionBadge(el, view) {
+  const text = formatSessionBadge(view);
   el['session-badge'].textContent = text;
   el['session-badge'].hidden = text === '';
 }
 
-export function renderUsage(el, state) {
-  const failed = state.status === 'ERROR';
+/** @param {object} el element map @param {object} view toViewModel() result */
+export function renderUsage(el, view) {
+  const failed = view.status === 'ERROR';
   const parts = [];
   if (failed) parts.push('run failed');
-  if (failed && typeof state.error === 'string') parts.push(state.error);
-  const usage = formatUsage(state.usage);
+  if (failed && typeof view.error === 'string') parts.push(view.error);
+  const usage = formatUsage(view.usage);
   if (usage) parts.push(usage);
   el.usage.textContent = parts.join(' · ');
   el.usage.setAttribute('data-status', failed ? 'error' : 'ok');

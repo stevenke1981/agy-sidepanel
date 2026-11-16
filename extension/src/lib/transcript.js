@@ -124,6 +124,18 @@ export function addUserMessage(state, text, contextSummary = null) {
 }
 
 /**
+ * Append a UI-originated note (no reqId) in the same row format as host notes. kind 'error' marks a failure row;
+ * any other value is stored as 'note'. Returns a new state; the input is never mutated.
+ * @param {TranscriptState} state
+ * @param {string} text
+ * @param {'note'|'error'} [kind]
+ * @returns {TranscriptState}
+ */
+export function appendNote(state, text, kind = 'note') {
+  return appendRow(state, { kind: kind === 'error' ? 'error' : 'note', reqId: null, text: clip(str(text)) });
+}
+
+/**
  * Register a run and bind the most recent unbound user message to it.
  * @param {TranscriptState} state
  * @param {string} reqId

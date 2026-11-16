@@ -14,10 +14,10 @@ export const PENDING_KEY = 'pendingPrompt';
  */
 export function createPendingFlow({ prompt, applyPrefill, notify }) {
   let busy = false;
+  let rerun = false;
+  let inFlight = null;
 
-  async function consume() {
-    if (busy) return;
-    busy = true;
+  async function takeOnce() {
     try {
       const stored = await chrome.storage.session.get(PENDING_KEY);
       if (!stored[PENDING_KEY]) return;
@@ -26,9 +26,32 @@ export function createPendingFlow({ prompt, applyPrefill, notify }) {
       if (pending) await applyPrefill(composeFromPending(pending, prompt.value));
     } catch (error) {
       notify(`Could not read pending prompt: ${errorText(error)}`);
-    } finally {
-      busy = false;
     }
+  }
+
+  /**
+   * A call while busy sets `rerun` instead of being dropped: a pending prompt written during the current pass
+   * is picked up by one more pass. The loop check and `busy = false` run in the same synchronous step, so no
+   * call can land between "no rerun requested" and "idle".
+   * Callers get the in-flight promise, so awaiting consume() waits for every pass.
+   */
+  function consume() {
+    if (busy) {
+      rerun = true;
+      return inFlight;
+    }
+    busy = true;
+    inFlight = (async () => {
+      try {
+        do {
+          rerun = false;
+          await takeOnce();
+        } while (rerun);
+      } finally {
+        busy = false;
+      }
+    })();
+    return inFlight;
   }
 
   return { consume };
