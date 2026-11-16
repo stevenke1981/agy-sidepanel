@@ -13,7 +13,7 @@ import {
   isValidReqId, validateOpenIdePath, validatePrompt, validateRunOptions,
 } from '../../extension/src/lib/protocol.js';
 
-export const HOST_VERSION = '1.0.0';
+export const HOST_VERSION = '1.0.1';
 const VERSION_TIMEOUT_MS = 5_000;
 const MODELS_TIMEOUT_MS = 30_000;
 const KILL_TIMEOUT_MS = 15_000;

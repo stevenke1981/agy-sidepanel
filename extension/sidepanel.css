@@ -329,7 +329,7 @@ select:hover { border-color: var(--c-muted); }
 .step-state-text, .step-dur { flex: none; color: var(--c-muted); font-size: var(--text-xs); }
 .step[data-state="active"] .step-state-text { color: var(--c-accent); }
 .step-body { display: grid; gap: 6px; padding: 0 8px 8px; }
-.step-info, .step-out {
+.step-info {
   margin: 0;
   padding: 8px;
   max-height: 180px;

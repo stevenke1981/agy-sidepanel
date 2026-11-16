@@ -39,7 +39,7 @@ test('a DONE step with the same id shows a check, the duration, and no spinner',
   assert.equal(withClass(row, 'step-check').length, 1);
   assert.equal(withClass(row, 'step-spinner').length, 0);
   assert.equal(withClass(row, 'step-dur')[0].textContent, '1.2s');
-  assert.equal(withClass(row, 'step-out')[0].textContent, 'contents');
+  assert.equal(withClass(row, 'step-out').length, 0);
 });
 
 test('step titles fall back from toolName to stepType to a generic label', () => {

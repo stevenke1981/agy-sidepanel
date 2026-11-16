@@ -1,7 +1,7 @@
 // Pure send-path decisions: page-context gating, RunOptions assembly, composer key handling.
 import { REASON_NOTE } from './context-view.js';
 
-const GATED_NOTICE = 'Page context is not sent in skip-permissions or auto mode; sent without it.';
+const GATED_NOTICE = 'Page context is only sent in plan mode without skip-permissions; sent without it.';
 
 /**
  * Decide whether page context may be used. Gated modes never fail the send; they send without context.
@@ -9,7 +9,7 @@ const GATED_NOTICE = 'Page context is not sent in skip-permissions or auto mode;
  */
 export function decidePageContext({ wantPage, skipPermissions, mode }) {
   if (!wantPage) return { use: false, notice: '' };
-  if (skipPermissions === true || mode === 'auto') return { use: false, notice: GATED_NOTICE };
+  if (skipPermissions === true || (mode || 'plan') !== 'plan') return { use: false, notice: GATED_NOTICE };
   return { use: true, notice: '' };
 }
 

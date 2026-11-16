@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.1] - 2026-11-16
+### Fixed
+- When the host disconnects, or a saved chat is restored after the side panel closed mid-run, runs still marked running are now marked failed, so they no longer look active.
+- Removed the dead "tool output" branch from the step row; agy reports only tool arguments.
+
+### Changed
+- License changed from MIT to Apache-2.0.
+- Page context is now only sent in `plan` mode without skip-permissions. `accept-edits` and the agy default mode can write files, so untrusted page text is no longer combined with them. The host enforces the same rule.
+
 ## [1.0.0] - 2026-11-16
 ### Added
 - Chrome MV3 side panel to chat with the local Google Antigravity `agy` CLI (streaming, stop, continue conversation, model/mode selection).
